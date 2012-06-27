@@ -1,5 +1,6 @@
 package net.tynril.nmeBenchmark;
 
+import haxe.Timer;
 import nme.Lib;
 
 /**
@@ -13,13 +14,16 @@ class Main
 	private static inline var DELAY_BETWEEN_BENCHMARKS : Int = 500;
 	
 	/** Time in milliseconds after which any unprepared or unfinished benchmark is killed. */
-	private static inline var BENCHMARK_TIMEOUT : Int = 10000;
+	private static inline var BENCHMARK_TIMEOUT : Int = 30000;
 	
 	/** List of all benchmarks to be run. */
 	private static var _benchmarks : Array<Benchmark>;
 	
 	/** Benchmark currently being run. */
 	private static var _currentBenchmark : Benchmark;
+	
+	/** Timeout related to the current operation. */
+	private static var _currentTimeout : Timer;
 	
 	/**
 	 * Entry point.
@@ -81,8 +85,12 @@ class Main
 		// Instanciate the next benchmark.
 		_currentBenchmark = _benchmarks.shift();
 		_currentBenchmark.instance = Type.createInstance(_currentBenchmark.clazz, _currentBenchmark.args);
-		_currentBenchmark.instance.preparationCompleted = benchmarkReadyHandler;
-		_currentBenchmark.instance.benchmarkCompleted = benchmarkCompletedHandler;
+		_currentBenchmark.instance.__preparationCompleted = benchmarkReadyHandler;
+		_currentBenchmark.instance.__benchmarkCompleted = benchmarkCompletedHandler;
+		
+		// Prepares a timeout for the preparation.
+		_currentTimeout = new Timer(BENCHMARK_TIMEOUT);
+		_currentTimeout.run = benchmarkTimedOut;
 		
 		// Starts its preparation.
 		_currentBenchmark.instance.prepare();
@@ -93,14 +101,28 @@ class Main
 	 */
 	private static function benchmarkReadyHandler() : Void
 	{
+		// Clears the preparation timeout.
+		_currentTimeout.stop();
+		
 		// Clean-up the memory.
 		nme.system.System.gc();
 		
 		// Wait for one second, then start the benchmark.
-		haxe.Timer.delay(function() : Void {
-			Lib.current.addChild(_currentBenchmark.instance);
-			_currentBenchmark.instance.start();
-		}, DELAY_BETWEEN_BENCHMARKS);
+		Timer.delay(delayedStartBenchmark, DELAY_BETWEEN_BENCHMARKS);
+	}
+	
+	/**
+	 * Starts the execution of a benchmark.
+	 */
+	private static function delayedStartBenchmark() : Void
+	{
+		// Prepares a timeout for the execution.
+		_currentTimeout = new Timer(BENCHMARK_TIMEOUT);
+		_currentTimeout.run = benchmarkTimedOut;
+		
+		// Executes!
+		Lib.current.addChild(_currentBenchmark.instance);
+		_currentBenchmark.instance.start();
 	}
 	
 	/**
@@ -108,9 +130,36 @@ class Main
 	 */
 	private static function benchmarkCompletedHandler() : Void
 	{
-		Lib.current.removeChild(_currentBenchmark.instance);
-		_currentBenchmark.instance.dispose();
+		trace("Benchmark complete.");
+		disposeBenchmark();
 		runNext();
+	}
+	
+	/**
+	 * Called when the current benchmark operation has timed out.
+	 */
+	private static function benchmarkTimedOut() : Void
+	{
+		trace("Benchmark timed out.");
+		disposeBenchmark();
+		runNext();
+	}
+	
+	/**
+	 * Disposes the current benchmark.
+	 */
+	private static function disposeBenchmark() : Void
+	{
+		// Clears the timeout.
+		_currentTimeout.stop();
+		
+		// Removes the benchmark from the stage.
+		Lib.current.removeChild(_currentBenchmark.instance);
+		
+		// Dispose of its internals.
+		_currentBenchmark.instance.__preparationCompleted = null;
+		_currentBenchmark.instance.__benchmarkCompleted = null;
+		_currentBenchmark.instance.dispose();
 	}
 	
 	/**

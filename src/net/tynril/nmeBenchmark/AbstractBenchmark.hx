@@ -9,12 +9,18 @@ class AbstractBenchmark extends Sprite
 	/**
 	 * Function to call once the preparation is completed.
 	 */
-	public var preparationCompleted : Void -> Void;
+	public function preparationCompleted() : Void {
+		if (__preparationCompleted != null) __preparationCompleted();
+	}
+	public var __preparationCompleted : Void -> Void;
 	
 	/**
 	 * Function to call once the benchmark itself is completed.
 	 */
-	public var benchmarkCompleted : Void -> Void;
+	public function benchmarkCompleted() : Void {
+		if (__benchmarkCompleted != null) __benchmarkCompleted();
+	}
+	public var __benchmarkCompleted : Void -> Void;
 	
 	/**
 	 * Prepare the benchmark execution.
