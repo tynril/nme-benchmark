@@ -1,6 +1,7 @@
 package net.tynril.nmeBenchmark;
 
 import haxe.Timer;
+import nme.display.Sprite;
 import nme.Lib;
 
 /**
@@ -8,7 +9,7 @@ import nme.Lib;
  * 
  * @author Samuel Loretan <tynril@gmail.com>
  */
-class Main
+class Main extends Sprite
 {
 	/** Delay in milliseconds between two benchmarks. */
 	private static inline var DELAY_BETWEEN_BENCHMARKS : Int = 500;
@@ -17,13 +18,13 @@ class Main
 	private static inline var BENCHMARK_TIMEOUT : Int = 30000;
 	
 	/** List of all benchmarks to be run. */
-	private static var _benchmarks : Array<Benchmark>;
+	private var _benchmarks : Array<Benchmark>;
 	
 	/** Benchmark currently being run. */
-	private static var _currentBenchmark : Benchmark;
+	private var _currentBenchmark : Benchmark;
 	
 	/** Timeout related to the current operation. */
-	private static var _currentTimeout : Timer;
+	private var _currentTimeout : Timer;
 	
 	/**
 	 * Entry point.
@@ -35,6 +36,17 @@ class Main
 		stage.scaleMode = nme.display.StageScaleMode.NO_SCALE;
 		stage.align = nme.display.StageAlign.TOP_LEFT;
 		
+		// Adds the stage root.
+		Lib.current.addChild(new Main());
+	}
+	
+	/**
+	 * Stage root constructor.
+	 */
+	public function new()
+	{
+		super();
+		
 		// Gets the list of benchmarks to run.
 		_benchmarks = getBenchmarksList();
 		
@@ -45,7 +57,7 @@ class Main
 	/**
 	 * Gets the list of benchmarks to run by scanning the BenchmarksList class.
 	 */
-	private static function getBenchmarksList() : Array<Benchmark>
+	private function getBenchmarksList() : Array<Benchmark>
 	{
 		var list : Array<Benchmark> = [];
 		var metaData = haxe.rtti.Meta.getStatics(BenchmarksList);
@@ -74,7 +86,7 @@ class Main
 	/**
 	 * Executes the next benchmark in the stack.
 	 */
-	private static function runNext() : Void
+	private function runNext() : Void
 	{
 		// Check if there's still something to be run.
 		if (_benchmarks.length == 0) {
@@ -99,7 +111,7 @@ class Main
 	/**
 	 * Called when the preparation of the current benchmark has completed.
 	 */
-	private static function benchmarkReadyHandler() : Void
+	private function benchmarkReadyHandler() : Void
 	{
 		// Clears the preparation timeout.
 		_currentTimeout.stop();
@@ -114,7 +126,7 @@ class Main
 	/**
 	 * Starts the execution of a benchmark.
 	 */
-	private static function delayedStartBenchmark() : Void
+	private function delayedStartBenchmark() : Void
 	{
 		// Prepares a timeout for the execution.
 		_currentTimeout = new Timer(BENCHMARK_TIMEOUT);
@@ -128,7 +140,7 @@ class Main
 	/**
 	 * Called when the current benchmark has finished running.
 	 */
-	private static function benchmarkCompletedHandler() : Void
+	private function benchmarkCompletedHandler() : Void
 	{
 		trace("Benchmark complete.");
 		disposeBenchmark();
@@ -138,7 +150,7 @@ class Main
 	/**
 	 * Called when the current benchmark operation has timed out.
 	 */
-	private static function benchmarkTimedOut() : Void
+	private function benchmarkTimedOut() : Void
 	{
 		trace("Benchmark timed out.");
 		disposeBenchmark();
@@ -148,7 +160,7 @@ class Main
 	/**
 	 * Disposes the current benchmark.
 	 */
-	private static function disposeBenchmark() : Void
+	private function disposeBenchmark() : Void
 	{
 		// Clears the timeout.
 		_currentTimeout.stop();
@@ -166,7 +178,7 @@ class Main
 	 * Finishes the benchmark execution, and write the results to the
 	 * output file.
 	 */
-	private static function finish() : Void
+	private function finish() : Void
 	{
 		trace("Finished!");
 	}
