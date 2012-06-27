@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<meta title="NME Benchmark" package="net.tynril.nmeBenchmark.nmebenchmark" version="1.0.0" company="Samuel Loretan" />
+	<app main="net.tynril.nmeBenchmark.Main" file="nmebenchmark" path="bin" />
+	<window background="#3C3C3C" fps="1000" width="1280" height="800" />
+	
+	<source path="src" />
+	<haxelib name="nme" />
+	<haxelib name="actuate" />
+	
+	<icon path="assets/nme.svg" />
+	<assets path="assets/img" rename="img" />
+	
+	<ndll name="std" />
+	<ndll name="regexp" />
+	<ndll name="zlib" />
+	<ndll name="nme" haxelib="nme" />
+	
+	<haxeflag name="--dead-code-elimination" if="html5" />
+	<haxeflag name="--js-modern" if="html5" />
+</project>
