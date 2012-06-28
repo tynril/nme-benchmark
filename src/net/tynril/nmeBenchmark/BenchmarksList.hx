@@ -21,4 +21,6 @@ class BenchmarksList implements Infos
 	
 	@args(10000)
 	public static var d : CircleBenchmark;
+	
+	public static var e : CircleBenchmark;
 }

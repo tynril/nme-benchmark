@@ -68,11 +68,18 @@ class Main extends Sprite
 				for(staticField in classDef.statics) {
 					switch(staticField.type) {
 						case haxe.rtti.CType.CClass(typeName, typeParams):
-							list.push( {
+							var benchmark : Benchmark = {
 								clazz: cast Type.resolveClass(typeName),
-								args: Reflect.field(Reflect.field(metaData, staticField.name), 'args'),
-								instance: null 
-							} );
+								args: [],
+								instance: null
+							};
+							
+							if (Reflect.hasField(metaData, staticField.name) &&
+								Reflect.hasField(Reflect.field(metaData, staticField.name), 'args')) {
+								benchmark.args = Reflect.field(Reflect.field(metaData, staticField.name), 'args');
+							}
+							
+							list.push(benchmark);
 						default:
 							throw "Error: the benchmarks list seems invalid.";
 					}
