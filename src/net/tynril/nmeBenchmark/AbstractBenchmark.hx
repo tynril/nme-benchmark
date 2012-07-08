@@ -23,6 +23,14 @@ class AbstractBenchmark extends Sprite
 	public var __benchmarkCompleted : Void -> Void;
 	
 	/**
+	 * Get the name of the benchmark.
+	 */
+	public function getName() : String {
+		throw "Abstract method call.";
+		return "";
+	}
+	
+	/**
 	 * Prepare the benchmark execution.
 	 * 
 	 * Once completed, call the <tt>preparationCompleted</tt> method.

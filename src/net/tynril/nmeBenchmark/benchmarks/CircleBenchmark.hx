@@ -3,6 +3,7 @@ package net.tynril.nmeBenchmark.benchmarks;
 import com.eclecticdesignstudio.motion.Actuate;
 import com.eclecticdesignstudio.motion.easing.Linear;
 import net.tynril.nmeBenchmark.AbstractBenchmark;
+import net.tynril.nmeBenchmark.utils.Random;
 import nme.display.Sprite;
 import nme.Lib;
 
@@ -10,26 +11,32 @@ class CircleBenchmark extends AbstractBenchmark
 {
 	private var _count : Int;
 	private var _completed : Int;
+	private var _random : Random;
 	
 	public function new(circlesCount : Int = 1)
 	{
 		super();
 		
 		_count = circlesCount;
+		_random = new Random(circlesCount);
+	}
+	
+	public override function getName() : String
+	{
+		return _count + " circles of pain";
 	}
 	
 	public override function prepare() : Void
 	{
-		//trace("prepare");
 		for (i in 0..._count)
 		{
 			var circle : Sprite = new Sprite();
-			circle.graphics.beginFill(Std.int(Math.random() * 0xFFFFFF), 0.2 + Math.random());
-			circle.graphics.drawCircle(0, 0, 10 + (Math.random() * 50));
+			circle.graphics.beginFill(Std.int(_random.nextFloat() * 0xFFFFFF), 0.2 + _random.nextFloat());
+			circle.graphics.drawCircle(0, 0, 10 + (_random.nextFloat() * 50));
 			circle.graphics.endFill();
 			
-			circle.x = Math.random() * Lib.current.stage.stageWidth;
-			circle.y = Math.random() * Lib.current.stage.stageHeight;
+			circle.x = _random.nextFloat() * Lib.current.stage.stageWidth;
+			circle.y = _random.nextFloat() * Lib.current.stage.stageHeight;
 			
 			addChild(circle);
 			
@@ -43,14 +50,13 @@ class CircleBenchmark extends AbstractBenchmark
 	
 	public override function start() : Void
 	{
-		//trace("start");
 		for (i in 0...this.numChildren)
 		{
 			Actuate.tween(this.getChildAt(i),
 			2.0,
 			{
-				x: Math.random() * Lib.current.stage.stageWidth,
-				y: Math.random() * Lib.current.stage.stageHeight
+				x: _random.nextFloat() * Lib.current.stage.stageWidth,
+				y: _random.nextFloat() * Lib.current.stage.stageHeight
 			}).ease(Linear.easeNone).onComplete(completed);
 		}
 	}
@@ -58,16 +64,12 @@ class CircleBenchmark extends AbstractBenchmark
 	private function completed() : Void
 	{
 		_completed ++;
-		if (_completed == _count) {
-			//trace("DONE");
+		if (_completed == _count)
 			benchmarkCompleted();
-		} //else
-			//trace(_completed + "/" + _count);
 	}
 	
 	public override function dispose() : Void
 	{
-		//trace("dispose");
 		for (i in 0...this.numChildren)
 			Actuate.stop(this.getChildAt(i));
 		while(this.numChildren > 0)

@@ -2,7 +2,7 @@
 <project>
 	<meta title="NME Benchmark" package="net.tynril.nmeBenchmark.nmebenchmark" version="1.0.0" company="Samuel Loretan" />
 	<app main="net.tynril.nmeBenchmark.Main" file="nmebenchmark" path="bin" />
-	<window background="#3C3C3C" fps="1000" width="1280" height="800" />
+	<window background="#3C3C3C" fps="10000" width="1280" height="800" />
 	
 	<source path="src" />
 	<haxelib name="nme" />

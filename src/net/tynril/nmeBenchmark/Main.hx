@@ -2,7 +2,10 @@ package net.tynril.nmeBenchmark;
 
 import haxe.Timer;
 import nme.display.Sprite;
+import nme.events.Event;
 import nme.Lib;
+
+using net.tynril.nmeBenchmark.utils.XmlUtils;
 
 /**
  * Entry point of the NME Benchmark.
@@ -20,8 +23,17 @@ class Main extends Sprite
 	/** List of all benchmarks to be run. */
 	private var _benchmarks : Array<Benchmark>;
 	
+	/** List of all benchmarks results. */
+	private var _results : Array<BenchmarkResults>;
+	
 	/** Benchmark currently being run. */
 	private var _currentBenchmark : Benchmark;
+	
+	/** Results of the benchmark currently being run. */
+	private var _currentResults : BenchmarkResults;
+	
+	/** Timestamp of the last frame on the current benchmark. */
+	private var _lastFrameStamp : Float;
 	
 	/** Timeout related to the current operation. */
 	private var _currentTimeout : Timer;
@@ -49,6 +61,7 @@ class Main extends Sprite
 		
 		// Gets the list of benchmarks to run.
 		_benchmarks = getBenchmarksList();
+		_results = [];
 		
 		// Executes the first one.
 		runNext();
@@ -68,11 +81,9 @@ class Main extends Sprite
 				for(staticField in classDef.statics) {
 					switch(staticField.type) {
 						case haxe.rtti.CType.CClass(typeName, typeParams):
-							var benchmark : Benchmark = {
-								clazz: cast Type.resolveClass(typeName),
-								args: [],
-								instance: null
-							};
+							var benchmark : Benchmark = new Benchmark();
+							benchmark.clazz = cast Type.resolveClass(typeName);
+							benchmark.args = [];
 							
 							if (Reflect.hasField(metaData, staticField.name) &&
 								Reflect.hasField(Reflect.field(metaData, staticField.name), 'args')) {
@@ -139,9 +150,29 @@ class Main extends Sprite
 		_currentTimeout = new Timer(BENCHMARK_TIMEOUT);
 		_currentTimeout.run = benchmarkTimedOut;
 		
+		// Starts the frames time measurement.
+		Lib.current.stage.addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+		
+		// Prepares the result container.
+		_currentResults = new BenchmarkResults();
+		_currentResults.name = _currentBenchmark.instance.getName();
+		_currentResults.framesDurations = [];
+		_currentResults.startTime = Timer.stamp();
+		_lastFrameStamp = Timer.stamp();
+		
 		// Executes!
 		Lib.current.addChild(_currentBenchmark.instance);
 		_currentBenchmark.instance.start();
+	}
+	
+	/**
+	 * Called every frame while the benchmark is running.
+	 */
+	private function enterFrameHandler(e) : Void
+	{
+		var currentFrameStamp : Float = Timer.stamp();
+		_currentResults.framesDurations.push(currentFrameStamp - _lastFrameStamp);
+		_lastFrameStamp = currentFrameStamp;
 	}
 	
 	/**
@@ -149,7 +180,11 @@ class Main extends Sprite
 	 */
 	private function benchmarkCompletedHandler() : Void
 	{
-		trace("Benchmark complete.");
+		// Finishes the results recording.
+		_currentResults.endTime = Timer.stamp();
+		_results.push(_currentResults);
+		
+		// Clears the current benchmark and go to the next one.
 		disposeBenchmark();
 		runNext();
 	}
@@ -159,7 +194,12 @@ class Main extends Sprite
 	 */
 	private function benchmarkTimedOut() : Void
 	{
-		trace("Benchmark timed out.");
+		// Stores the result.
+		_currentResults.endTime = Timer.stamp();
+		_currentResults.timedOut = true;
+		_results.push(_currentResults);
+		
+		// Clears the current benchmark and go to the next one.
 		disposeBenchmark();
 		runNext();
 	}
@@ -171,6 +211,9 @@ class Main extends Sprite
 	{
 		// Clears the timeout.
 		_currentTimeout.stop();
+		
+		// Stops frames time measurement.
+		Lib.current.stage.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
 		
 		// Removes the benchmark from the stage.
 		Lib.current.removeChild(_currentBenchmark.instance);
@@ -187,15 +230,68 @@ class Main extends Sprite
 	 */
 	private function finish() : Void
 	{
-		trace("Finished!");
+		// Preparing the XML to store the result.
+		var xmlResults : Xml = Xml.createDocument();
+		xmlResults.addChild(Xml.createProlog("xml version=\"1.0\""));
+		var rootNode : Xml = Xml.createElement("benchmark-results");
+		xmlResults.addChild(rootNode);
+		
+		for (result in _results)
+		{
+			// Get the frames.
+			var frames = result.framesDurations;
+			var framesCount = frames.length;
+			
+			// Calculate the overall duration.
+			var benchmarkDuration = (result.endTime - result.startTime);
+			
+			// Deducing the average framerate...
+			var avgFramerate = (framesCount / benchmarkDuration);
+			
+			// Sorting the frames, the slowest to the fastest.
+			frames.sort(function(a, b) return ((a < b) ? -1 : ((a > b) ? 1 : 0)) );
+			
+			// Getting an (approximately good enough) median.
+			var medianFramerate = 1 / frames[Math.round(framesCount / 2)];
+			
+			// Getting the fastest and slowest frame, skipping 5% of potential artifacts.
+			var bestFramerate = 1 / frames[Std.int(framesCount * 0.05)];
+			var worseFramerate = 1 / frames[Std.int((framesCount - 1) * 0.95)];
+			
+			// Outputting the result.
+			var resultNode : Xml = Xml.createElement("result");
+			resultNode.set("name", result.name);
+			resultNode.appendTextNode("duration", Std.string(benchmarkDuration));
+			resultNode.appendTextNode("frames-count", Std.string(framesCount));
+			resultNode.appendTextNode("avg-fps", Std.string(avgFramerate));
+			resultNode.appendTextNode("median-fps", Std.string(medianFramerate));
+			resultNode.appendTextNode("best-fps", Std.string(bestFramerate));
+			resultNode.appendTextNode("worse-fps", Std.string(worseFramerate));
+			rootNode.addChild(resultNode);
+		}
+		
+		trace(xmlResults.toPrettyString());
 	}
 }
 
 /**
  * Wrapper type for benchmarks.
  */
-private typedef Benchmark = {
-	var clazz : Class<AbstractBenchmark>;
-	var args : Array<Dynamic>;
-	var instance : AbstractBenchmark;
-};
+private class Benchmark {
+	public function new() {}
+	public var clazz : Class<AbstractBenchmark>;
+	public var args : Array<Dynamic>;
+	public var instance : AbstractBenchmark;
+}
+
+/**
+ * Wrapper type for benchmark results.
+ */
+private class BenchmarkResults {
+	public function new() {}
+	public var name : String;
+	public var startTime : Float;
+	public var endTime : Float;
+	public var framesDurations : Array<Float>;
+	public var timedOut : Bool;
+}
